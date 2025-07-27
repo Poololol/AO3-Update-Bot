@@ -1,11 +1,15 @@
 import AO3
 import json
 import time
-import sendWork
 import discord
-import search
+import asyncio
+from keys import authorID
 
 class Bot(discord.Client):
+    def __init__(self, *, intents: discord.Intents, **options) -> None:
+        super().__init__(intents=intents, **options)
+        self.tree = discord.app_commands.CommandTree(self)
+
     def setInfo(self, searchParams: dict[str, str | bool | int], updateTime: float, channelIDs: list[int]) -> None:
         '''
         Args:
@@ -18,36 +22,61 @@ class Bot(discord.Client):
         self.channelIDs = channelIDs
 
     async def on_ready(self):
-        print(f'Logged in as {self.user} (ID: {self.user.id})')
+        print(f'Logged in as {self.user} (ID: {self.user.id})') #type: ignore
         print('------')
-        #threading.Thread(target=self.search).start()
-        search.searchCog()
-    
+        #await self.tree.sync()
+        print('Ready!')
+
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
-        print('Recieved Message')
-        if message.content.startswith('$setChannel'):
-            with open('data.json') as file:
-                data = json.JSONDecoder().decode(file.read())
-            data['channelIDs'].append(message.channel.id)
-            with open('data.json', 'w') as file:
-                file.write(json.JSONEncoder().encode(data))
-
-            await message.channel.send(f'Added channel {message.channel.name} to update list') #type: ignore
-        
-        if message.content.startswith('$removeChannel'):
-            with open('data.json') as file:
-                data = json.JSONDecoder().decode(file.read())
-            try:
-                data['channelIDs'].remove(message.channel.id)
-                await message.channel.send(f'Removed channel {message.channel.name} from update list') #type: ignore
-            except ValueError:
-                await message.channel.send(f'Failed to remove channel {message.channel.name} from update list') #type: ignore
-            with open('data.json', 'w') as file:
-                file.write(json.JSONEncoder().encode(data))
+        print(f'Recieved message: {message.content}')
+        if message.author.id == authorID:
+            if message.content.startswith('$reload'):
+                print('Reloading')
+                self.tree.copy_global_to(guild=message.guild) #type: ignore
+                print(await self.tree.sync(guild=message.guild))
+                await message.channel.send('Reloaded!')
     
-    def sendWork(self, workID):
+    async def search(self, searchParams: dict[str, str | bool | int], send: bool = True):
+        await self.wait_until_ready()
+        search = AO3.Search(**searchParams) #type: ignore
+        search.update()
+        print(search.total_results)
+        decoder = json.decoder.JSONDecoder()
+        while not self.is_closed():
+            t1 = time.time()
+            newWorks = []
+            dataFile = decoder.decode(open('data.json').read())
+            totalWorks = dataFile['total']
+            startingWorks = dataFile['total']
+            while totalWorks < search.total_results:
+                for result in search.results:
+                    if result.id not in dataFile['ids']:
+                        if send:
+                            await self.sendWork(result.id)
+                        newWorks.append(result.id)
+                        dataFile['ids'].append(result.id)
+                        totalWorks += 1
+                print(totalWorks)
+                search.page += 1
+                search.update()
+            dataFile['total'] = totalWorks
+            with open('data.json', 'w') as file:
+                jsonData = json.JSONEncoder().encode(dataFile)
+                file.write(jsonData)
+            print(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
+                Increased works from {startingWorks} to {totalWorks}''')
+            #print(newWorks)
+            print(self.updateTime * 60 * 60)
+            if not send:
+
+                return
+            await asyncio.sleep(self.updateTime * 60 * 60)
+
+    async def sendWork(self, workID: int):
+        print(f'Sending work: {workID}')
         for channelID in self.channelIDs:
             channel = self.get_channel(channelID)
-            message = await channel.send(f'https://archiveofourown.org/works/{workID}')
+            message = await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
+        print('Sent!')
