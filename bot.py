@@ -20,11 +20,12 @@ class Bot(discord.Client):
         self.searchParams = searchParams
         self.updateTime = updateTime
         self.channelIDs = channelIDs
+        self.bg_task: asyncio.Task
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})') #type: ignore
         print('------')
-        #await self.tree.sync()
+        await self.tree.sync()
         print('Ready!')
 
     async def on_message(self, message: discord.Message):
@@ -34,15 +35,16 @@ class Bot(discord.Client):
         if message.author.id == authorID:
             if message.content.startswith('$reload'):
                 print('Reloading')
-                self.tree.copy_global_to(guild=message.guild) #type: ignore
+                #self.tree.copy_global_to(guild=message.guild) #type: ignore
                 print(await self.tree.sync(guild=message.guild))
+                #print(message.guild.id)
                 await message.channel.send('Reloaded!')
     
     async def search(self, searchParams: dict[str, str | bool | int], send: bool = True):
         await self.wait_until_ready()
         search = AO3.Search(**searchParams) #type: ignore
         search.update()
-        print(search.total_results)
+        print(f'Total Works: {search.total_results}')
         decoder = json.decoder.JSONDecoder()
         while not self.is_closed():
             t1 = time.time()
@@ -58,7 +60,7 @@ class Bot(discord.Client):
                         newWorks.append(result.id)
                         dataFile['ids'].append(result.id)
                         totalWorks += 1
-                print(totalWorks)
+                print(f'Works Loaded: {totalWorks}')
                 search.page += 1
                 search.update()
             dataFile['total'] = totalWorks
@@ -68,9 +70,8 @@ class Bot(discord.Client):
             print(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
                 Increased works from {startingWorks} to {totalWorks}''')
             #print(newWorks)
-            print(self.updateTime * 60 * 60)
+            print(f'Seconds until next search: {self.updateTime * 60 * 60}')
             if not send:
-
                 return
             await asyncio.sleep(self.updateTime * 60 * 60)
 
