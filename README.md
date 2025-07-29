@@ -1,5 +1,4 @@
 # Instructions
-You will need to [register](https://discord.com/developers/applications) your own bot for this
 ## Code
 1. Copy dataTemplate.json and rename it to data.json
 2. Create a file named keys.py
