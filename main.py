@@ -96,24 +96,36 @@ async def start(interaction: discord.Interaction):
     if searchEmpty(searchParams):
         await interaction.response.send_message('No tags currently selected, search cannot be started')
     else:
-        bot.bg_task = bot.loop.create_task(bot.search(bot.searchParams))
-        await interaction.response.send_message('Started!')
+        if bot.bg_task:
+            await interaction.response.send_message('Bot is already running!')
+        else:
+            bot.startSearch()
+            await interaction.response.send_message('Started!')
+            print('Started!')
 
 @tree.command(name='stop', description='Stop the bot searching')
 async def stop(interaction: discord.Interaction):
-    bot.bg_task.cancel()
-    await interaction.response.send_message('Stopped!')
-    print('Stopped!')
+    if bot.bg_task:
+        bot.bg_task.cancel()
+        await interaction.response.send_message('Stopped!')
+        print('Stopped!')
+        bot.bg_task = None
+    else:
+        await interaction.response.send_message('Bot was not running!')
 
 @tree.command(name='load', description='Load works without sending links. Useful for the first time using the bot')
 async def load(interaction: discord.Interaction):
     if searchEmpty(searchParams):
         await interaction.response.send_message('No tags currently selected, search cannot be started')
     else:
-        bot.bg_task = bot.loop.create_task(bot.search(bot.searchParams, False))
-        await interaction.response.send_message('Loading... This may take a while depending on how many works need to be loaded')
-        while not bot.bg_task.done():
-            await asyncio.sleep(5)
-        await interaction.channel.send('Loaded!') #type: ignore
+        if bot.bg_task is None:
+            bot.startSearch(False)
+            await interaction.response.send_message('Loading... This may take a while depending on how many works need to be loaded')
+            while not bot.bg_task.done(): # type: ignore
+                await asyncio.sleep(5)
+            await interaction.channel.send('Loaded!') #type: ignore
+            bot.bg_task = None
+        else:
+            await interaction.response.send_message('Bot is already running!')
 
 bot.run(token)
