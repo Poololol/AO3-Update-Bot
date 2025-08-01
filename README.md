@@ -1,8 +1,9 @@
 # Instructions
 ## Code
-1. Copy dataTemplate.json and rename it to data.json
-2. Create a file named keys.py
-3. In keys.py type `token = 'YOUR_BOT_TOKEN'` and `authorID = 'YOUR_DISCORD_ID'`
+1. Clone the repository
+2. Copy dataTemplate.json and rename it to data.json
+3. Create a file named keys.py
+4. In keys.py type `token = 'YOUR_BOT_TOKEN'` and `authorID = 'YOUR_DISCORD_ID'`
 ## Usage
 1. Invite the bot to your server
 2. Type `$reload`
