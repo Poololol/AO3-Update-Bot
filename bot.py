@@ -56,35 +56,38 @@ class Bot(discord.Client):
 
     async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True):
         await self.wait_until_ready()
-        search = AO3.Search(**searchParams, sort_column=AO3.search.DATE_POSTED) #type: ignore
-        search.update()
-        print(f'Total Works: {search.total_results}')
+        
         decoder = json.decoder.JSONDecoder()
         encoder = json.encoder.JSONEncoder()
         
         while not self.is_closed():
             t1 = time.time()
-            newWorks = []
             dataFile = decoder.decode(open('data.json').read())
             totalWorks = dataFile['total']
             startingWorks = dataFile['total']
 
-            while totalWorks < search.total_results:
-                for result in search.results:
-                    if result.id not in dataFile['ids']:
-                        if send:
-                            await self.sendWork(result.id)
-                        newWorks.append(result.id)
-                        dataFile['ids'].append(result.id)
-                        totalWorks += 1
-                print(f'Works Loaded: {totalWorks}')
-                search.page += 1
+            for searchParam in searchParams:
+                search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
                 search.update()
+                print(f'Total Works: {search.total_results}')
+                newWorks = []
 
-            dataFile['total'] = totalWorks
-            with open('data.json', 'w') as file:
-                jsonData = encoder.encode(dataFile)
-                file.write(jsonData)
+                while search.page <= search.pages:
+                    for result in search.results:
+                        if result.id not in dataFile['ids']:
+                            if send:
+                                await self.sendWork(result.id)
+                            newWorks.append(result.id)
+                            dataFile['ids'].append(result.id)
+                            totalWorks += 1
+                    print(f'Works Loaded: {totalWorks}')
+                    search.page += 1
+                    search.update()
+
+                dataFile['total'] = totalWorks
+                with open('data.json', 'w') as file:
+                    jsonData = encoder.encode(dataFile)
+                    file.write(jsonData)
             print(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:

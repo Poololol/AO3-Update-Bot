@@ -63,7 +63,7 @@ async def removeChannel(interaction: discord.Interaction):
 
 @tree.command(name="addtag", description="Adds a tag to the search")
 @discord.app_commands.describe(tagtype="The type of tag to add e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to add")
-async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags'], tag: str, searchgroup: int = 1):
+async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships'], tag: str, searchgroup: int = 1):
     try: 
         if tag not in searchParams[searchgroup - 1][tagtype]:
             searchParams[searchgroup - 1][tagtype].append(tag)
@@ -76,7 +76,7 @@ async def addTag(interaction: discord.Interaction, tagtype: Literal['characters'
 
 @tree.command(name="removetag", description="Removes a tag from the search")
 @discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to remove")
-async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags'], tag: str, searchgroup: int = 1):
+async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships'], tag: str, searchgroup: int = 1):
     try:
         searchParams[searchgroup - 1][tagtype].remove(tag)
         await interaction.response.send_message(f'Removed "{tag}" from search parameters for group {searchgroup}')
@@ -158,11 +158,23 @@ async def load(interaction: discord.Interaction):
     else:
         if bot.bg_task is None:
             bot.startSearch(False)
-            await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
-            while not bot.bg_task.done(): # type: ignore
-                await asyncio.sleep(5)
-            await interaction.channel.send('Loaded!') #type: ignore
-            bot.bg_task = None
+            print('Search Started!')
+            try:
+                await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
+                while not bot.bg_task.done(): # type: ignore
+                    await asyncio.sleep(5)
+                await interaction.channel.send('Loaded!') #type: ignore
+                bot.bg_task = None
+            except asyncio.TimeoutError:
+                print('Time out error occured. Trying again')
+                await interaction.channel.send('Time out error occured. Trying again') #type: ignore
+                bot.bg_task = None
+                bot.startSearch(False)
+                await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
+                while not bot.bg_task.done(): # type: ignore
+                    await asyncio.sleep(5)
+                await interaction.channel.send('Loaded!') #type: ignore
+                bot.bg_task = None
         else:
             await interaction.response.send_message('Bot is already running!')
 
