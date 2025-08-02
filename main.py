@@ -6,26 +6,35 @@ from bot import Bot
 from keys import token
 
 def convertParams(searchParams: dict[str, list[str]]) -> dict[str, str | int | bool]:
+    return {'characters': ','.join(searchParams['characters']), 'fandoms': ','.join(searchParams['fandoms'])}
+
+def saveParams(searchParams: list[dict[str, list[str]]]):
     with open('data.json') as file:
         data = json.JSONDecoder().decode(file.read())
     data['searchParams'] = searchParams
     with open('data.json', 'w') as file:
         file.write(json.JSONEncoder().encode(data))
-    return {'characters': ','.join(searchParams['characters']), 'fandoms': ','.join(searchParams['fandoms'])}
 
-def searchEmpty(searchParams: dict[str, list[str]]) -> bool:
-    return searchParams['characters'] == [] and searchParams['fandoms'] == []
+def searchEmpty(searchParams: list[dict[str, list[str]]]) -> bool:
+    tot = 0
+    for i in range(len(searchParams)):
+        tot += searchParams[i]['characters'] == [] and searchParams[i]['fandoms'] == []
+    return tot == len(searchParams)
+
+def setBotInfo():
+    saveParams(searchParams)
+    bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, data['channelIDs'])
 
 with open('data.json') as file:
     data = json.JSONDecoder().decode(file.read())
 
 intents = discord.Intents.default()
 intents.message_content = True
-searchParams = data['searchParams']
-updateTime = data['interval']
+searchParams: list[dict[str, list[str]]] = data['searchParams']
+updateTime: float = data['interval']
 
 bot = Bot(command_prefix='$', intents=intents)
-bot.setInfo(convertParams(searchParams), updateTime, data['channelIDs'])
+setBotInfo()
 
 tree = bot.tree
 @tree.command(name="addchannel", description="Adds current channel to the update list")
@@ -53,31 +62,60 @@ async def removeChannel(interaction: discord.Interaction):
         file.write(json.JSONEncoder().encode(data))
 
 @tree.command(name="addtag", description="Adds a tag to the search")
-@discord.app_commands.describe(tagtype="The type of tag to add e.g. Character, Fandom", tag="The tag to add")
-async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms'], tag: str):
-    if tag not in searchParams[tagtype]:
-        searchParams[tagtype].append(tag)
-        await interaction.response.send_message(f'Added "{tag}" to search parameters') #type: ignore
-        bot.setInfo(convertParams(searchParams), updateTime, data['channelIDs'])
-    else:
-        await interaction.response.send_message(f'"{tag}" is already in search parameters') #type: ignore
+@discord.app_commands.describe(tagtype="The type of tag to add e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to add")
+async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags'], tag: str, searchgroup: int = 1):
+    try: 
+        if tag not in searchParams[searchgroup - 1][tagtype]:
+            searchParams[searchgroup - 1][tagtype].append(tag)
+            await interaction.response.send_message(f'Added "{tag}" to search parameters for group {searchgroup}')
+            setBotInfo()
+        else:
+            await interaction.response.send_message(f'"{tag}" is already in search parameters')
+    except IndexError:
+        await interaction.response.send_message(f'Group {searchgroup} does not exist')
 
 @tree.command(name="removetag", description="Removes a tag from the search")
-@discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", tag="The tag to remove")
-async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms'], tag: str):
+@discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to remove")
+async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags'], tag: str, searchgroup: int = 1):
     try:
-        searchParams[tagtype].remove(tag)
-        await interaction.response.send_message(f'Removed "{tag}" from search parameters') #type: ignore
-        bot.setInfo(convertParams(searchParams), updateTime, data['channelIDs'])
-    except ValueError:
-        await interaction.response.send_message(f'"{tag}" was not in search parameters') #type: ignore
+        searchParams[searchgroup - 1][tagtype].remove(tag)
+        await interaction.response.send_message(f'Removed "{tag}" from search parameters for group {searchgroup}')
+        setBotInfo()
+    except (ValueError, IndexError) as e:
+        if e.__class__ == IndexError:
+            await interaction.response.send_message(f'Group {searchgroup} does not exist')
+        elif e.__class__ == ValueError: 
+            await interaction.response.send_message(f'"{tag}" was not in search parameters')
+
+@tree.command(name='addgroup', description='Adds a search group')
+async def addGroup(interaction: discord.Interaction):
+    with open('dataTemplate.json') as file:
+        searchParams.append(json.JSONDecoder().decode(file.read())['searchParams'][0])
+    saveParams(searchParams)
+    await interaction.response.send_message('Group added!')
 
 @tree.command(name="listtags", description="Lists the current tags in the search")
 async def listTags(interaction: discord.Interaction):
     if searchEmpty(searchParams):
         await interaction.response.send_message('No tags currently selected')
     else:
-        await interaction.response.send_message(f'{'\n'.join(searchParams['characters'])}') #type: ignore
+        message = ''
+        for i in range(len(searchParams)):
+            message += f'Search Group {i+1}:\n'
+            tags = sum(list(searchParams[i].values()), [])
+            for tag in tags:
+                message += f'\t{tag}\n'
+        await interaction.response.send_message(message)
+
+@tree.command(name="listchannels", description="Lists the current channels that are being updated")
+async def listChannels(interaction: discord.Interaction):
+    channelNames: list[str] = []
+    for channelID in data['channelIDs']:
+        channelNames.append(bot.get_channel(channelID).name) #type: ignore
+    message = 'Channels:\n'
+    for name in channelNames:
+        message += f'\t{name}\n'
+    await interaction.response.send_message(message)
 
 @tree.command(name='setinterval', description='Sets the interval between searches')
 @discord.app_commands.describe(interval='The time in hours')
@@ -88,7 +126,7 @@ async def setInterval(interaction: discord.Interaction, interval: float):
     with open('data.json', 'w') as file:
         file.write(json.JSONEncoder().encode(data))
     updateTime = interval
-    bot.setInfo(convertParams(searchParams), updateTime, data['channelIDs'])
+    setBotInfo()
     await interaction.response.send_message(f'Set interval to {interval} hours ({interval * 60} mins)')
 
 @tree.command(name='start', description='Start the bot searching')

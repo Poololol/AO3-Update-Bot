@@ -11,7 +11,7 @@ class Bot(discord.Client):
         super().__init__(intents=intents, **options)
         self.tree = discord.app_commands.CommandTree(self)
 
-    def setInfo(self, searchParams: dict[str, str | bool | int], updateTime: float, channelIDs: list[int]) -> None:
+    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int]) -> None:
         '''
         Args:
             searchParams (dict[str, str]): 
@@ -50,12 +50,13 @@ class Bot(discord.Client):
                 print('Reloading')
                 #self.tree.copy_global_to(guild=message.guild) #type: ignore
                 print(await self.tree.sync(guild=message.guild))
+                print([com.name for com in self.tree.get_commands()])
                 #print(message.guild.id)
                 await message.channel.send('Reloaded!')
 
-    async def search(self, searchParams: dict[str, str | bool | int], send: bool = True):
+    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True):
         await self.wait_until_ready()
-        search = AO3.Search(**searchParams) #type: ignore
+        search = AO3.Search(**searchParams, sort_column=AO3.search.DATE_POSTED) #type: ignore
         search.update()
         print(f'Total Works: {search.total_results}')
         decoder = json.decoder.JSONDecoder()

@@ -2,9 +2,13 @@
     "channelIDs": [],
     "total": 0,
     "ids": [],
-    "searchParams": {
-        "characters": [],
-        "fandoms": []
-    },
+    "searchParams": [
+        {
+            "characters": [],
+            "fandoms": [],
+            "tags": [],
+            "relationships": []
+        }
+    ],
     "interval": 1
 }
