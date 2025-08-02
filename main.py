@@ -120,7 +120,7 @@ async def load(interaction: discord.Interaction):
     else:
         if bot.bg_task is None:
             bot.startSearch(False)
-            await interaction.response.send_message('Loading... This may take a while depending on how many works need to be loaded')
+            await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
             while not bot.bg_task.done(): # type: ignore
                 await asyncio.sleep(5)
             await interaction.channel.send('Loaded!') #type: ignore

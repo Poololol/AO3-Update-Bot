@@ -87,13 +87,18 @@ class Bot(discord.Client):
             print(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:
-                return
+                break
             print(f'Seconds until next search: {self.updateTime * 60 * 60}')
             await asyncio.sleep(self.updateTime * 60 * 60)
 
     async def sendWork(self, workID: int):
         print(f'Sending work: {workID}')
+        if self.channelIDs == []:
+            with open('data.json') as file:
+                self.channelIDs = json.JSONDecoder().decode(file.read())['channelIDs']
+        if self.channelIDs == []:
+            print('Channel List is empty')
         for channelID in self.channelIDs:
             channel = self.get_channel(channelID)
-            message = await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
-        print('Sent!')
+            await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
+            print(f'Sent to channel "{self.get_channel(channelID).name}"') #type: ignore
