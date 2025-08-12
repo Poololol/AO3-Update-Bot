@@ -6,7 +6,10 @@ from bot import Bot
 from keys import token
 
 def convertParams(searchParams: dict[str, list[str]]) -> dict[str, str | int | bool]:
-    return {'characters': ','.join(searchParams['characters']), 'fandoms': ','.join(searchParams['fandoms'])}
+    new = {}
+    for key in searchParams.keys():
+        new[key] = ','.join(searchParams[key])
+    return new
 
 def saveParams(searchParams: list[dict[str, list[str]]]):
     with open('data.json') as file:
@@ -63,7 +66,7 @@ async def removeChannel(interaction: discord.Interaction):
 
 @tree.command(name="addtag", description="Adds a tag to the search")
 @discord.app_commands.describe(tagtype="The type of tag to add e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to add")
-async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships'], tag: str, searchgroup: int = 1):
+async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships', 'excluded_tags'], tag: str, searchgroup: int = 1):
     try: 
         if tag not in searchParams[searchgroup - 1][tagtype]:
             searchParams[searchgroup - 1][tagtype].append(tag)
@@ -76,7 +79,7 @@ async def addTag(interaction: discord.Interaction, tagtype: Literal['characters'
 
 @tree.command(name="removetag", description="Removes a tag from the search")
 @discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to remove")
-async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships'], tag: str, searchgroup: int = 1):
+async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships', 'excluded_tags'], tag: str, searchgroup: int = 1):
     try:
         searchParams[searchgroup - 1][tagtype].remove(tag)
         await interaction.response.send_message(f'Removed "{tag}" from search parameters for group {searchgroup}')
@@ -101,10 +104,17 @@ async def listTags(interaction: discord.Interaction):
     else:
         message = ''
         for i in range(len(searchParams)):
-            message += f'Search Group {i+1}:\n'
+            message += f'**Search Group {i+1}:**\n'
             tags = sum(list(searchParams[i].values()), [])
+
             for tag in tags:
-                message += f'\t{tag}\n'
+                if tag not in searchParams[i]['excluded_tags']:
+                    message += f'\t{tag}\n'
+
+            message += '\t**Excluded Tags:**\n'
+            for tag in searchParams[i]['excluded_tags']:
+                message += f'\t\t{tag}\n'
+
         await interaction.response.send_message(message)
 
 @tree.command(name="listchannels", description="Lists the current channels that are being updated")
