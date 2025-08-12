@@ -1,6 +1,7 @@
 import json
 import discord
 import asyncio
+from AO3 import Search
 from typing import Literal
 from bot import Bot
 from keys import token
@@ -188,4 +189,17 @@ async def load(interaction: discord.Interaction):
         else:
             await interaction.response.send_message('Bot is already running!')
 
+@tree.command(name='listnumworks', description='Lists the total number of loaded works')
+async def listNumWorks(interaction: discord.Interaction):
+    intdata = await interaction.response.send_message('Loading...')
+    message: discord.Message = await interaction.channel.fetch_message(intdata.message_id) #type: ignore
+    for i in range(len(searchParams)):
+        print(searchParams[i])
+        search = Search(**convertParams(searchParams[i])) #type: ignore
+        search.update()
+        print(search.total_results)
+        message: discord.Message = await message.edit(content=f'{message.content}\nSearch Group {i+1}:\n\t{str(search.total_results)}')
+    print(data['total'])
+    await message.edit(content=f'{message.content[len('Loading...'):]}\nTotal:\n\t{str(data['total'])}')
+    
 bot.run(token)
