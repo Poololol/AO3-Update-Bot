@@ -44,7 +44,7 @@ class Bot(discord.Client):
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
-        print(f'Recieved message: {message.content}')
+        #print(f'Recieved message: {message.content}')
         if message.author.id == authorID:
             if message.content.startswith('$reload'):
                 print('Reloading')
