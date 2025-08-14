@@ -225,19 +225,30 @@ def main():
                 await interaction.response.send_message('Bot is already running!')
 
     @tree.command(name='listnumworks', description='Lists the total number of loaded works')
-    async def listNumWorks(interaction: discord.Interaction):
+    @discord.app_commands.describe(group='The search group to list for. -1 = All groups, 0 = Total Loaded, 1 = Search Group 1 ...')
+    async def listNumWorks(interaction: discord.Interaction, group: int = -1):
         data = loadData()
         searchParams = data['searchParams']
         intdata = await interaction.response.send_message('Loading...')
         message: discord.Message = await interaction.channel.fetch_message(intdata.message_id) #type: ignore
-        for i in range(len(searchParams)):
-            print(searchParams[i])
-            search = Search(**convertParams(searchParams[i])) #type: ignore
+        if group == -1:
+            for i in range(len(searchParams)):
+                print(searchParams[i])
+                search = Search(**convertParams(searchParams[i])) #type: ignore
+                search.update()
+                print(search.total_results)
+                message: discord.Message = await message.edit(content=f'{message.content}\n**Search Group {i+1}:**\n\t{str(search.total_results)}')
+            print(data['total'])
+            await message.edit(content=f'{message.content[len('Loading...'):]}\n**Total Loaded:**\n\t{str(data['total'])}')
+        elif group == 0:
+            print(data['total'])
+            await message.edit(content=f'{message.content[len('Loading...'):]}\n**Total Loaded:**\n\t{str(data['total'])}')
+        else:
+            print(searchParams[group - 1])
+            search = Search(**convertParams(searchParams[group - 1])) #type: ignore
             search.update()
             print(search.total_results)
-            message: discord.Message = await message.edit(content=f'{message.content}\n**Search Group {i+1}:**\n\t{str(search.total_results)}')
-        print(data['total'])
-        await message.edit(content=f'{message.content[len('Loading...'):]}\n**Total Loaded:**\n\t{str(data['total'])}')
+            message: discord.Message = await message.edit(content=f'{message.content[len('Loading...'):]}\n**Search Group {group}:**\n\t{str(search.total_results)}')
 
     @tree.command(name='toggleexplicit', description='Toggles the visibility of fics marked explicit')
     async def toggleExplicit(interaction: discord.Interaction):
