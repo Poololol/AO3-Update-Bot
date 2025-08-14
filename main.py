@@ -34,7 +34,7 @@ def loadData():
         data = json.JSONDecoder().decode(file.read())
     return data
 
-def main():
+def main(logging: bool = False):
     data = loadData()
 
     intents = discord.Intents.default()
@@ -257,8 +257,11 @@ def main():
         with open('data.json', 'w') as file:
             file.write(json.JSONEncoder().encode(data))
         await interaction.response.send_message(f'Toggled visibility to {'True' if data['allowExplicit'] else 'False'}')
-        
-    bot.run(token)
+    
+    if logging:
+        bot.run(token)
+    else:
+        bot.run(token, log_handler=None)
 
 if __name__ == '__main__':
     main()
