@@ -38,8 +38,8 @@ class Bot(discord.Client):
         else:
             print('Not Started!')
 
-    def startSearch(self, send: bool = True):
-        self.bg_task = self.loop.create_task(self.search(self.searchParams, send))
+    def startSearch(self, send: bool = True, allowExplicit: bool = True):
+        self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
@@ -54,7 +54,7 @@ class Bot(discord.Client):
                 #print(message.guild.id)
                 await message.channel.send('Reloaded!')
 
-    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True):
+    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True, allowExplicit: bool = True):
         await self.wait_until_ready()
         
         decoder = json.decoder.JSONDecoder()
@@ -74,7 +74,7 @@ class Bot(discord.Client):
 
                 while search.page <= search.pages:
                     for result in search.results:
-                        if result.id not in dataFile['ids']:
+                        if result.id not in dataFile['ids'] and (allowExplicit or (result.rating != 'Explicit')):
                             if send:
                                 await self.sendWork(result.id)
                             newWorks.append(result.id)

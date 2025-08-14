@@ -173,7 +173,7 @@ def main():
             if bot.bg_task:
                 await interaction.response.send_message('Bot is already running!')
             else:
-                bot.startSearch()
+                bot.startSearch(allowExplicit=data['allowExplicit'])
                 await interaction.response.send_message('Started!')
                 print('Started!')
 
@@ -195,7 +195,7 @@ def main():
             await interaction.response.send_message('No tags currently selected, search cannot be started')
         else:
             if bot.bg_task is None:
-                bot.startSearch(False)
+                bot.startSearch(False, data['allowExplicit'])
                 print('Search Started!')
                 try:
                     await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
@@ -207,7 +207,7 @@ def main():
                     print('Time out error occured. Trying again')
                     await interaction.channel.send('Time out error occured. Trying again') #type: ignore
                     bot.bg_task = None
-                    bot.startSearch(False)
+                    bot.startSearch(False, data['allowExplicit'])
                     await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
                     while not bot.bg_task.done(): # type: ignore
                         await asyncio.sleep(5)
@@ -230,6 +230,14 @@ def main():
             message: discord.Message = await message.edit(content=f'{message.content}\n**Search Group {i+1}:**\n\t{str(search.total_results)}')
         print(data['total'])
         await message.edit(content=f'{message.content[len('Loading...'):]}\n**Total Loaded:**\n\t{str(data['total'])}')
+
+    @tree.command(name='toggleexplicit', description='Toggles the visibility of fics marked explicit')
+    async def toggleExplicit(interaction: discord.Interaction):
+        data = loadData()
+        data['allowExplicit'] = not data['allowExplicit']
+        with open('data.json', 'w') as file:
+            file.write(json.JSONEncoder().encode(data))
+        await interaction.response.send_message(f'Toggled visibility to {'True' if data['allowExplicit'] else 'False'}')
         
     bot.run(token)
 
