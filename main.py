@@ -46,25 +46,33 @@ def main():
     setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
 
     tree = bot.tree
-    @tree.command(name="addchannel", description="Adds current channel to the update list")
-    async def addChannel(interaction: discord.Interaction): 
+    @tree.command(name="addchannel", description="Adds a channel to the update list")
+    @discord.app_commands.describe(channel='The channel to add (defaults to current channel)')
+    async def addChannel(interaction: discord.Interaction, channel: discord.channel.TextChannel | None = None): 
         data = loadData()
-        if interaction.channel.id not in data['channelIDs']: #type: ignore
-            data['channelIDs'].append(interaction.channel.id) #type: ignore
-            await interaction.response.send_message(f'Added channel "{interaction.channel.name}" to update list') #type: ignore
+        if channel is None:
+            channel = interaction.channel #type: ignore
+        channelID = channel.id #type: ignore
+        if channelID not in data['channelIDs']:
+            data['channelIDs'].append(channelID)
+            await interaction.response.send_message(f'Added channel "{channel.name}" to update list') #type: ignore
         else:
-            await interaction.response.send_message(f'Channel "{interaction.channel.name}" is already in update list') #type: ignore
+            await interaction.response.send_message(f'Channel "{channel.name}" is already in update list') #type: ignore
         with open('data.json', 'w') as file:
             file.write(json.JSONEncoder().encode(data))
 
-    @tree.command(name="removechannel", description="Removes current channel from the update list")
-    async def removeChannel(interaction: discord.Interaction):
+    @tree.command(name="removechannel", description="Removes a channel from the update list")
+    @discord.app_commands.describe(channel='The channel to remove (defaults to current channel)')
+    async def removeChannel(interaction: discord.Interaction, channel: discord.channel.TextChannel | None = None):
         data = loadData()
+        if channel is None:
+            channel = interaction.channel #type: ignore
+        channelID = channel.id #type: ignore
         try:
-            data['channelIDs'].remove(interaction.channel.id) #type: ignore
-            await interaction.channel.send(f'Removed channel "{interaction.channel.name}" from update list') #type: ignore
+            data['channelIDs'].remove(channelID)
+            await interaction.response.send_message(f'Removed channel "{channel.name}" from update list') #type: ignore
         except ValueError:
-            await interaction.channel.send(f'Failed to remove channel "{interaction.channel.name}" from update list') #type: ignore
+            await interaction.response.send_message(f'Failed to remove channel "{channel.name}" from update list') #type: ignore
         with open('data.json', 'w') as file:
             file.write(json.JSONEncoder().encode(data))
 
