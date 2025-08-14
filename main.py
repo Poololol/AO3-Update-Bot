@@ -77,7 +77,7 @@ def main():
             else:
                 await interaction.response.send_message(f'"{tag}" is already in search parameters')
         except IndexError:
-            await interaction.response.send_message(f'Group {searchgroup} does not exist')
+            await interaction.response.send_message(f'Search Group {searchgroup} does not exist')
 
     @tree.command(name="removetag", description="Removes a tag from the search")
     @discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to remove")
@@ -88,7 +88,7 @@ def main():
             setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
         except (ValueError, IndexError) as e:
             if e.__class__ == IndexError:
-                await interaction.response.send_message(f'Group {searchgroup} does not exist')
+                await interaction.response.send_message(f'Search Group {searchgroup} does not exist')
             elif e.__class__ == ValueError: 
                 await interaction.response.send_message(f'"{tag}" was not in search parameters')
 
@@ -97,8 +97,18 @@ def main():
         with open('dataTemplate.json') as file:
             searchParams.append(json.JSONDecoder().decode(file.read())['searchParams'][0])
         saveParams(searchParams)
-        await interaction.response.send_message('Group added!')
-
+        await interaction.response.send_message(f'Search Group added! Total Groups: {len(searchParams)}')
+    
+    @tree.command(name='deletegroup', description='Removes a search group from the search')
+    @discord.app_commands.describe(searchgroup='The search group to remove')
+    async def deleteGroup(interaction: discord.Interaction, searchgroup: int):
+        try:
+            searchParams.pop(searchgroup+1)
+            saveParams(searchParams)
+            await interaction.response.send_message(f'Search Group removec! Total Groups: {len(searchParams)}')
+        except IndexError:
+            await interaction.response.send_message(f'Failed to remove Search Group! Search Group {searchgroup} does not exist')
+    
     @tree.command(name="listtags", description="Lists the current tags in the search")
     async def listTags(interaction: discord.Interaction):
         if searchEmpty(searchParams):
@@ -124,7 +134,7 @@ def main():
         channelNames: list[str] = []
         for channelID in data['channelIDs']:
             channelNames.append(bot.get_channel(channelID).name) #type: ignore
-        message = 'Channels:\n'
+        message = '**Channels:**\n'
         for name in channelNames:
             message += f'\t{name}\n'
         await interaction.response.send_message(message)
@@ -199,9 +209,9 @@ def main():
             search = Search(**convertParams(searchParams[i])) #type: ignore
             search.update()
             print(search.total_results)
-            message: discord.Message = await message.edit(content=f'{message.content}\nSearch Group {i+1}:\n\t{str(search.total_results)}')
+            message: discord.Message = await message.edit(content=f'{message.content}\n**Search Group {i+1}:**\n\t{str(search.total_results)}')
         print(data['total'])
-        await message.edit(content=f'{message.content[len('Loading...'):]}\nTotal:\n\t{str(data['total'])}')
+        await message.edit(content=f'{message.content[len('Loading...'):]}\n**Total Loaded:**\n\t{str(data['total'])}')
         
     bot.run(token)
 
