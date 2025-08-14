@@ -103,7 +103,7 @@ def main():
     @discord.app_commands.describe(searchgroup='The search group to remove')
     async def deleteGroup(interaction: discord.Interaction, searchgroup: int):
         try:
-            searchParams.pop(searchgroup+1)
+            searchParams.pop(searchgroup - 1)
             saveParams(searchParams)
             await interaction.response.send_message(f'Search Group removec! Total Groups: {len(searchParams)}')
         except IndexError:
