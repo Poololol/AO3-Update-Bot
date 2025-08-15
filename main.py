@@ -212,13 +212,6 @@ def main(logging: bool = False):
                     await interaction.channel.send('Loaded!') #type: ignore
                     bot.bg_task = None
                 except asyncio.TimeoutError:
-                    print('Time out error occured. Trying again')
-                    await interaction.channel.send('Time out error occured. Trying again') #type: ignore
-                    bot.bg_task = None
-                    bot.startSearch(False, data['allowExplicit'])
-                    await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
-                    while not bot.bg_task.done(): # type: ignore
-                        await asyncio.sleep(5)
                     await interaction.channel.send('Loaded!') #type: ignore
                     bot.bg_task = None
             else:

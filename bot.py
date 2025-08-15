@@ -69,18 +69,20 @@ class Bot(discord.Client):
             for searchParam in searchParams:
                 search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
                 search.update()
-                print(f'Total Works: {search.total_results}')
-                newWorks = []
+                print(f'Total Works: {search.total_results}, Pages: {search.pages}')
 
                 while search.page <= search.pages:
+                    newWorks = 0
                     for result in search.results:
                         if result.id not in dataFile['ids'] and (allowExplicit or (result.rating != 'Explicit')):
                             if send:
                                 await self.sendWork(result.id)
-                            newWorks.append(result.id)
                             dataFile['ids'].append(result.id)
+                            newWorks += 1
                             totalWorks += 1
-                    print(f'Works Loaded: {totalWorks}')
+                    print(f'Works Loaded: {totalWorks}, Page: {search.page}')
+                    if send and newWorks == 0:
+                        break
                     search.page += 1
                     search.update()
 
