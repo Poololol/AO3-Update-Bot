@@ -33,7 +33,9 @@ class Bot(discord.Client):
         except inputimeout.TimeoutOccurred:
             s = 'n'
         if s.lower().strip() == 'y':
-            self.startSearch()
+            with open('data.json') as file:
+                data = json.JSONDecoder().decode(file.read())
+            self.startSearch(allowExplicit=data['allowExplicit'])
             print('Started!')
         else:
             print('Not Started!')
