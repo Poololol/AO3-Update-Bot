@@ -1,6 +1,7 @@
 import json
 import discord
 import asyncio
+import time
 from AO3 import Search
 from typing import Literal
 from bot import Bot
@@ -183,14 +184,14 @@ def main(logging: bool = False):
             else:
                 bot.startSearch(allowExplicit=data['allowExplicit'])
                 await interaction.response.send_message('Started!')
-                print('Started!')
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
 
     @tree.command(name='stop', description='Stop the bot searching')
     async def stop(interaction: discord.Interaction):
         if bot.bg_task:
             bot.bg_task.cancel()
             await interaction.response.send_message('Stopped!')
-            print('Stopped!')
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Stopped!')
             bot.bg_task = None
         else:
             await interaction.response.send_message('Bot was not running!')
@@ -204,7 +205,7 @@ def main(logging: bool = False):
         else:
             if bot.bg_task is None:
                 bot.startSearch(False, data['allowExplicit'])
-                print('Search Started!')
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Started!')
                 try:
                     await interaction.response.send_message('Loading... This may take up to 5 minutes depending on how many works need to be loaded')
                     while not bot.bg_task.done(): # type: ignore

@@ -24,10 +24,9 @@ class Bot(discord.Client):
         self.bg_task: asyncio.Task | None = None
 
     async def on_ready(self):
-        print(f'Logged in as {self.user} (ID: {self.user.id})') #type: ignore
-        print('------')
+        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Logged in as {self.user} (ID: {self.user.id})') #type: ignore
         await self.tree.sync()
-        print('Ready!')
+        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Ready!')
         try: 
             s = inputimeout.inputimeout(prompt='Start? (y/n) ', timeout=10)
         except inputimeout.TimeoutOccurred:
@@ -36,9 +35,9 @@ class Bot(discord.Client):
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
             self.startSearch(allowExplicit=data['allowExplicit'])
-            print('Started!')
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
         else:
-            print('Not Started!')
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True):
         self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
@@ -49,7 +48,7 @@ class Bot(discord.Client):
         #print(f'Recieved message: {message.content}')
         if message.author.id == authorID:
             if message.content.startswith('$reload'):
-                print('Reloading')
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Reloading')
                 #self.tree.copy_global_to(guild=message.guild) #type: ignore
                 print(await self.tree.sync(guild=message.guild))
                 print([com.name for com in self.tree.get_commands()])
@@ -92,15 +91,15 @@ class Bot(discord.Client):
                 with open('data.json', 'w') as file:
                     jsonData = encoder.encode(dataFile)
                     file.write(jsonData)
-            print(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
+            print(f'''{time.strftime("%H:%M:%S", time.localtime())} - Updated Data File in {round(time.time() - t1, 1)} Seconds
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:
                 break
-            print(f'Seconds until next search: {self.updateTime * 60 * 60}')
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Seconds until next search: {self.updateTime * 60 * 60}')
             await asyncio.sleep(self.updateTime * 60 * 60)
 
     async def sendWork(self, workID: int):
-        print(f'Sending work: {workID}')
+        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work: {workID}')
         if self.channelIDs == []:
             with open('data.json') as file:
                 self.channelIDs = json.JSONDecoder().decode(file.read())['channelIDs']
