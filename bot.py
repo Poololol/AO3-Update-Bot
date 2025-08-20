@@ -43,7 +43,10 @@ class Bot(discord.Client):
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True):
-        self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
+        if self.bg_task is None:
+            self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
+        else:
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
@@ -65,6 +68,7 @@ class Bot(discord.Client):
         encoder = json.encoder.JSONEncoder()
         
         while not self.is_closed():
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Starting!')
             t1 = time.time()
             dataFile = decoder.decode(open('data.json').read())
             totalWorks = dataFile['total']
