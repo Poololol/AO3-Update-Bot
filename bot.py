@@ -8,10 +8,11 @@ from keys import authorID
 
 class Bot(discord.Client):
     def __init__(self, *, intents: discord.Intents, **options) -> None:
+        '''Always call `Bot.setInfo()` before `Bot.run()`'''
         super().__init__(intents=intents, **options)
         self.tree = discord.app_commands.CommandTree(self)
 
-    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int]) -> None:
+    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False) -> None:
         '''
         Args:
             searchParams (dict[str, str]): 
@@ -22,6 +23,8 @@ class Bot(discord.Client):
         self.updateTime = updateTime
         self.channelIDs = channelIDs
         self.bg_task: asyncio.Task | None = None
+        if autoStart is not None:
+            self.autoStart = autoStart
 
     async def on_ready(self):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Logged in as {self.user} (ID: {self.user.id})') #type: ignore
@@ -31,7 +34,7 @@ class Bot(discord.Client):
             s = inputimeout.inputimeout(prompt='Start? (y/n) ', timeout=10)
         except inputimeout.TimeoutOccurred:
             s = 'n'
-        if s.lower().strip() == 'y':
+        if s.lower().strip() == 'y' or self.autoStart:
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
             self.startSearch(allowExplicit=data['allowExplicit'])

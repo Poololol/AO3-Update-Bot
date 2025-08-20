@@ -26,16 +26,16 @@ def searchEmpty(searchParams: list[dict[str, list[str]]]) -> bool:
         tot += searchParams[i]['characters'] == [] and searchParams[i]['fandoms'] == []
     return tot == len(searchParams)
 
-def setBotInfo(bot: Bot, searchParams: list[dict[str, list[str]]], updateTime: float, channelIDs: list[int]):
+def setBotInfo(bot: Bot, searchParams: list[dict[str, list[str]]], updateTime: float, channelIDs: list[int], autoStart: bool | None = None):
     saveParams(searchParams)
-    bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, channelIDs)
+    bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, channelIDs, autoStart)
 
 def loadData():
     with open('data.json') as file:
         data = json.JSONDecoder().decode(file.read())
     return data
 
-def main(logging: bool = False):
+def main(logging: bool = False, autoStart: bool = False):
     data = loadData()
 
     intents = discord.Intents.default()
@@ -44,7 +44,7 @@ def main(logging: bool = False):
     updateTime: float = data['interval']
 
     bot = Bot(command_prefix='$', intents=intents)
-    setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
+    setBotInfo(bot, searchParams, updateTime, data['channelIDs'], autoStart)
 
     tree = bot.tree
     @tree.command(name="addchannel", description="Adds a channel to the update list")
