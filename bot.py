@@ -30,23 +30,28 @@ class Bot(discord.Client):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Logged in as {self.user} (ID: {self.user.id})') #type: ignore
         await self.tree.sync()
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Ready!')
-        try: 
-            s = inputimeout.inputimeout(prompt='Start? (y/n) ', timeout=10)
-        except inputimeout.TimeoutOccurred:
-            s = 'n'
-        if s.lower().strip() == 'y' or self.autoStart:
+        if self.autoStart:
+            s = 'y'
+        else:
+            try: 
+                s = inputimeout.inputimeout(prompt='Start? (y/n) ', timeout=10)
+            except inputimeout.TimeoutOccurred:
+                s = 'n'
+        if s.lower().strip() == 'y':
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
-            self.startSearch(allowExplicit=data['allowExplicit'])
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
-        else:
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
+            if self.startSearch(allowExplicit=data['allowExplicit']) == True:
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
+                return
+        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True):
         if self.bg_task is None:
             self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
+            return True
         else:
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
+            return False
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
@@ -114,5 +119,7 @@ class Bot(discord.Client):
             print('Channel List is empty')
         for channelID in self.channelIDs:
             channel = self.get_channel(channelID)
-            await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
-            print(f'Sent to channel "{self.get_channel(channelID).name}"') #type: ignore
+            print(channel)
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending to channel "{self.get_channel(channelID).name}"') #type: ignore
+            message = await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sent to channel "{self.get_channel(channelID).name}"') #type: ignore
