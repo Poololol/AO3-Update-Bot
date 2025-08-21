@@ -12,7 +12,7 @@ class Bot(discord.Client):
         super().__init__(intents=intents, **options)
         self.tree = discord.app_commands.CommandTree(self)
 
-    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False) -> None:
+    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False, deleteAfter: int | None = None) -> None:
         '''
         Args:
             searchParams (dict[str, str]): 
@@ -23,6 +23,8 @@ class Bot(discord.Client):
         self.updateTime = updateTime
         self.channelIDs = channelIDs
         self.bg_task: asyncio.Task | None = None
+        if deleteAfter is not None:
+            self.deleteAfter = deleteAfter
         if autoStart is not None:
             self.autoStart = autoStart
 
@@ -40,12 +42,12 @@ class Bot(discord.Client):
         if s.lower().strip() == 'y':
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
-            if self.startSearch(allowExplicit=data['allowExplicit']) == True:
+            if self.startSearch(allowExplicit=data['allowExplicit'], deleteAfter=self.deleteAfter) == True:
                 print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
                 return
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
-    def startSearch(self, send: bool = True, allowExplicit: bool = True):
+    def startSearch(self, send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
         if self.bg_task is None:
             self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
             return True
@@ -66,7 +68,7 @@ class Bot(discord.Client):
                 #print(message.guild.id)
                 await message.channel.send('Reloaded!')
 
-    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True, allowExplicit: bool = True):
+    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
         await self.wait_until_ready()
         
         decoder = json.decoder.JSONDecoder()
@@ -89,7 +91,7 @@ class Bot(discord.Client):
                     for result in search.results:
                         if result.id not in dataFile['ids'] and (allowExplicit or (result.rating != 'Explicit')):
                             if send:
-                                await self.sendWork(result.id)
+                                await self.sendWork(result.id, deleteAfter)
                             dataFile['ids'].append(result.id)
                             newWorks += 1
                             totalWorks += 1
@@ -110,7 +112,7 @@ class Bot(discord.Client):
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Seconds until next search: {self.updateTime * 60 * 60}')
             await asyncio.sleep(self.updateTime * 60 * 60)
 
-    async def sendWork(self, workID: int):
+    async def sendWork(self, workID: int, deleteAfter: int | None):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work: {workID}')
         if self.channelIDs == []:
             with open('data.json') as file:
@@ -121,5 +123,5 @@ class Bot(discord.Client):
             channel = self.get_channel(channelID)
             print(channel)
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending to channel "{self.get_channel(channelID).name}"') #type: ignore
-            message = await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
+            message = await channel.send(f'https://archiveofourown.org/works/{workID}', delete_after=deleteAfter) #type: ignore
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sent to channel "{self.get_channel(channelID).name}"') #type: ignore
