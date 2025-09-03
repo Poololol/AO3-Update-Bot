@@ -80,7 +80,7 @@ class Bot(discord.Client):
                     channel = self.get_channel(channelID)
                     async for message in channel.history(limit=10): #type: ignore
                         if message.author == self.user:
-                            message.delete()
+                            await message.delete()
                             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Message Deleted!')
 
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Starting!')
