@@ -26,16 +26,24 @@ def searchEmpty(searchParams: list[dict[str, list[str]]]) -> bool:
         tot += searchParams[i]['characters'] == [] and searchParams[i]['fandoms'] == []
     return tot == len(searchParams)
 
-def setBotInfo(bot: Bot, searchParams: list[dict[str, list[str]]], updateTime: float, channelIDs: list[int], autoStart: bool | None = None, deleteAfter: int | None = None):
+def setBotInfo(bot: Bot, searchParams: list[dict[str, list[str]]], updateTime: float, channelIDs: list[int], autoStart: bool | None = None, delete: bool | None = None):
     saveParams(searchParams)
-    bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, channelIDs, autoStart, deleteAfter)
+    bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, channelIDs, autoStart, delete)
 
 def loadData():
     with open('data.json') as file:
         data = json.JSONDecoder().decode(file.read())
     return data
 
-def main(logging: bool = False, autoStart: bool = False, deleteAfter: int | None = None, linkDeleteAfter: int | None = None):
+def main(logging: bool = False, autoStart: bool = False, deleteAfter: int | None = None, linkDelete: bool | None = None) -> None:
+    '''
+    Starts the bot
+    Args:
+        logging (bool = False): Whether to show the discord.py logs
+        autoStart (bool = False): Whether to auto restart the bot when it looses connection to discord
+        deleteAfter (int | None = None): The time in seconds to delete responses to commands after
+        linkDelete (bool | None = None): Whether to delete the sent links
+    '''
     data = loadData()
 
     intents = discord.Intents.default()
@@ -44,7 +52,7 @@ def main(logging: bool = False, autoStart: bool = False, deleteAfter: int | None
     updateTime: float = data['interval']
 
     bot = Bot(command_prefix='$', intents=intents)
-    setBotInfo(bot, searchParams, updateTime, data['channelIDs'], autoStart, linkDeleteAfter)
+    setBotInfo(bot, searchParams, updateTime, data['channelIDs'], autoStart, linkDelete)
 
     tree = bot.tree
     @tree.command(name="addchannel", description="Adds a channel to the update list")

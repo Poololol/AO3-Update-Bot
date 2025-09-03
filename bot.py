@@ -12,7 +12,7 @@ class Bot(discord.Client):
         super().__init__(intents=intents, **options)
         self.tree = discord.app_commands.CommandTree(self)
 
-    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False, deleteAfter: int | None = None) -> None:
+    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False, delete: bool | None = False) -> None:
         '''
         Args:
             searchParams (dict[str, str]): 
@@ -23,8 +23,8 @@ class Bot(discord.Client):
         self.updateTime = updateTime
         self.channelIDs = channelIDs
         self.bg_task: asyncio.Task | None = None
-        if deleteAfter is not None:
-            self.deleteAfter = deleteAfter
+        if delete is not None:
+            self.delete = delete
         if autoStart is not None:
             self.autoStart = autoStart
 
@@ -42,10 +42,10 @@ class Bot(discord.Client):
         if s.lower().strip() == 'y':
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
-            if self.startSearch(allowExplicit=data['allowExplicit'], deleteAfter=self.deleteAfter) == True:
+            if self.startSearch(allowExplicit=data['allowExplicit']) == True:
                 print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
-                return
-        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
+        else:
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
         if self.bg_task is None:
@@ -75,6 +75,14 @@ class Bot(discord.Client):
         encoder = json.encoder.JSONEncoder()
         
         while not self.is_closed():
+            if self.delete:
+                for channelID in self.channelIDs:
+                    channel = self.get_channel(channelID)
+                    async for message in channel.history(limit=10): #type: ignore
+                        if message.author == self.user:
+                            message.delete()
+                            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Message Deleted!')
+
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Starting!')
             t1 = time.time()
             dataFile = decoder.decode(open('data.json').read())
