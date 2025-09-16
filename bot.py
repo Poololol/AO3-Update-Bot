@@ -117,8 +117,10 @@ class Bot(discord.Client):
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:
                 break
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Seconds until next search: {self.updateTime * 60 * 60}')
-            await asyncio.sleep(self.updateTime * 60 * 60)
+            nextUpdateTime = time.time() + self.updateTime * 60 * 60
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Next search time: {time.strftime('%H:%M:%S', time.localtime(nextUpdateTime))}')
+            while time.time() < nextUpdateTime:
+                await asyncio.sleep(10 * 60)
 
     async def sendWork(self, workID: int, deleteAfter: int | None):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work: {workID}')
