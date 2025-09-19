@@ -27,6 +27,7 @@ class Bot(discord.Client):
             self.delete = delete
         if autoStart is not None:
             self.autoStart = autoStart
+        self.nextUpdateTime = 0
 
     async def on_ready(self):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Logged in as {self.user} (ID: {self.user.id})') #type: ignore
@@ -48,12 +49,11 @@ class Bot(discord.Client):
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
-        if self.bg_task is None:
+        if self.bg_task is None or time.time() > self.nextUpdateTime:
             self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
             return True
-        else:
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
-            return False
+        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
+        return False
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
@@ -100,6 +100,7 @@ class Bot(discord.Client):
                         if result.id not in dataFile['ids'] and (allowExplicit or (result.rating != 'Explicit')):
                             if send:
                                 await self.sendWork(result.id, deleteAfter)
+                                await asyncio.sleep(4)
                             dataFile['ids'].append(result.id)
                             newWorks += 1
                             totalWorks += 1
@@ -117,10 +118,9 @@ class Bot(discord.Client):
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:
                 break
-            nextUpdateTime = time.time() + self.updateTime * 60 * 60
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Next search time: {time.strftime('%H:%M:%S', time.localtime(nextUpdateTime))}')
-            while time.time() < nextUpdateTime:
-                await asyncio.sleep(10 * 60)
+            self.nextUpdateTime = time.time() + self.updateTime * 60 * 60
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Next search time: {time.strftime('%H:%M:%S', time.localtime(self.nextUpdateTime))}')
+            await asyncio.sleep(self.updateTime * 60 * 60)
 
     async def sendWork(self, workID: int, deleteAfter: int | None):
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work: {workID}')
