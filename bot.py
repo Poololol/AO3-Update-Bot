@@ -131,7 +131,6 @@ class Bot(discord.Client):
             print('Channel List is empty')
         for channelID in self.channelIDs:
             channel = self.get_channel(channelID)
-            print(channel)
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending to channel "{self.get_channel(channelID).name}"') #type: ignore
+            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work {workID} to channel "{self.get_channel(channelID).name}"') #type: ignore
             message = await channel.send(f'https://archiveofourown.org/works/{workID}', delete_after=deleteAfter) #type: ignore
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sent to channel "{self.get_channel(channelID).name}"') #type: ignore
+            #print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sent to {workID} channel "{self.get_channel(channelID).name}"') #type: ignore
