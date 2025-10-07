@@ -6,7 +6,7 @@
 4. In keys.py type `token = 'YOUR_BOT_TOKEN'` and `authorID = 'YOUR_DISCORD_ID'`
 ## Usage
 1. Invite the bot to your server
-2. Type `$reload`
+2. Run main.py
 3. Set the channel the bot will send links to using `/addchannel`
 4. Set the tags to search for using `/addtag`
 5. To load all current matching works
