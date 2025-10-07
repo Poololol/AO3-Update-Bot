@@ -11,13 +11,16 @@ class Bot(discord.Client):
         '''Always call `Bot.setInfo()` before `Bot.run()`'''
         super().__init__(intents=intents, **options)
         self.tree = discord.app_commands.CommandTree(self)
+        self.searchNum = 0
 
-    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = False, delete: bool | None = False) -> None:
+    def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = None, delete: bool | None = None) -> None:
         '''
         Args:
-            searchParams (dict[str, str]): 
-            updateTime (float): The time between two different requests in hours
-            channelIDs (list[int]): The list of channel IDs to send messages to
+            searchParams (dict[str, str]): Search Parameters.
+            updateTime (float): The time between two different requests in hours.
+            channelIDs (list[int]): The list of channel IDs to send messages to.
+            autoStart (bool | None = None): Whether to automatically restart the bot after a disconnect. If set to None will not change the value.
+            delete (bool | None = None): Whether to delete previously sent links. If set to None will not change the value. 
         '''
         self.searchParams = searchParams
         self.updateTime = updateTime
@@ -48,9 +51,10 @@ class Bot(discord.Client):
         else:
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
 
-    def startSearch(self, send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
+    def startSearch(self, send: bool = True, allowExplicit: bool = True):
         if self.bg_task is None or time.time() > self.nextUpdateTime:
-            self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit))
+            self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit), name=f'Search-{self.searchNum}')
+            self.searchNum += 1
             return True
         print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
         return False
@@ -114,6 +118,7 @@ class Bot(discord.Client):
                 with open('data.json', 'w') as file:
                     jsonData = encoder.encode(dataFile)
                     file.write(jsonData)
+
             print(f'''{time.strftime("%H:%M:%S", time.localtime())} - Updated Data File in {round(time.time() - t1, 1)} Seconds
                 Increased works from {startingWorks} to {totalWorks}''')
             if not send:
