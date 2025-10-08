@@ -79,13 +79,16 @@ class Bot(discord.Client):
         encoder = json.encoder.JSONEncoder()
         
         while not self.is_closed():
-            if self.delete:
-                for channelID in self.channelIDs:
-                    channel = self.get_channel(channelID)
-                    async for message in channel.history(limit=10): #type: ignore
-                        if message.author == self.user:
-                            await message.delete()
-                            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Message Deleted!')
+            try:
+                if self.delete:
+                    for channelID in self.channelIDs:
+                        channel = self.get_channel(channelID)
+                        async for message in channel.history(limit=10): #type: ignore
+                            if message.author == self.user:
+                                await message.delete()
+                                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Message Deleted!')
+            except:
+                pass
 
             print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Starting!')
             t1 = time.time()
