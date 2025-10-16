@@ -2,6 +2,7 @@ import json
 import discord
 import asyncio
 import time
+import argparse
 from AO3 import Search
 from typing import Literal
 from bot import Bot
@@ -35,7 +36,7 @@ def loadData():
         data = json.JSONDecoder().decode(file.read())
     return data
 
-def main(logging: bool = False, autoStart: bool = True, deleteAfter: int | None = None, linkDelete: bool = True) -> None:
+def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = None, linkDelete: bool = True) -> None:
     '''
     Starts the bot
     Args:
@@ -260,10 +261,18 @@ def main(logging: bool = False, autoStart: bool = True, deleteAfter: int | None 
             file.write(json.JSONEncoder().encode(data))
         await interaction.response.send_message(f'Toggled visibility to {'True' if data['allowExplicit'] else 'False'}', delete_after=deleteAfter)
     
-    if logging:
+    bot.logLevel = logLevel
+    if logLevel == 2:
         bot.run(token)
     else:
         bot.run(token, log_handler=None)
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--loglevel', default=1, type=int, choices=[0, 1, 2], help='The level of logging, 0 is no logging, 1 is my log messages, 2 is all logging')
+    parser.add_argument('-a', '--autostart', action='store_false', help='Automatically restart the bot after a disconnection')
+    parser.add_argument('-m', '--deleteafter', type=int, help='The time in seconds in which to delete responses to commands after')
+    parser.add_argument('-d', '--linkdelete', action='store_false', help='Delete sent links')
+    args = parser.parse_args()
+
+    main(args.loglevel, args.autostart, args.deleteafter, args.linkdelete)

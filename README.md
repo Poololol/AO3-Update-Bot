@@ -5,14 +5,13 @@
 3. Create a file named keys.py
 4. In keys.py type `token = 'YOUR_BOT_TOKEN'` and `authorID = 'YOUR_DISCORD_ID'`
 ## Usage
-1. Invite the bot to your server
-2. Run main.py
-3. Set the channel the bot will send links to using `/addchannel`
-4. Set the tags to search for using `/addtag`
-5. To load all current matching works
+1. Run main.py
+2. Set the channel the bot will send links to using `/addchannel`
+3. Set the tags to search for using `/addtag`
+4. To load all current matching works
     * Without sending links use `/load` then `/start` once finished loading
     * With sending links use `/start`
-6. To stop the bot use `/stop`
+5. To stop the bot use `/stop`
 ## Search
 1. Search tags are split into search groups
 2. Tags inside a search group are AND
@@ -22,7 +21,7 @@
    * To get the search Character A AND (Character B OR Character C) you would need 2 search groups, the first with 2 tags: Character A and Character B, the second also with 2 tags: Character A and Character C
 5. Search group indices start at 1
 
-# Command Documentation
+# Discord Command Documentation
 ## `/addchannel [channel]`
 Adds a channel to the list of channels to send links to. If no parameter is specified adds the channel the command was sent in, otherwise adds the specified channel.
 ## `/addgroup`
@@ -51,3 +50,13 @@ Starts the bot, will start the bot searching and sending links repeating at the 
 Stops the bot, stops the bot from searching and sending links.
 ## `/toggleexplicit`
 Toggles the sending of works marked as explicit. Default is to allow sending explicit.
+
+# Command Line Arguments
+## `-l, --loglevel LEVEL`
+Specifies the level of logging, 0 is no logging, 1 is my log messages, 2 is all logging. Defaults to 1
+## `-a, --autostart`
+If specified automatically restart the bot after a disconnection, otherwise don't.
+## `-m, --deleteafter DELETEAFTER`
+Specifies the time in seconds in which to delete responses to commands after. If not specified defaults to never delete responses.
+## `-d, --linkdelete`
+If specified delete sent links right before the next search, otherwise keep sent links.
