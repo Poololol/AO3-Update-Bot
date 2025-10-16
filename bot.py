@@ -6,6 +6,9 @@ import asyncio
 import inputimeout
 from keys import authorID
 
+def log(message: str) -> None:
+    print(f'{time.strftime("%H:%M:%S", time.localtime())} - {message}')
+
 class Bot(discord.Client):
     def __init__(self, *, intents: discord.Intents, **options) -> None:
         '''Always call `Bot.setInfo()` before `Bot.run()`'''
@@ -33,9 +36,9 @@ class Bot(discord.Client):
         self.nextUpdateTime = 0
 
     async def on_ready(self):
-        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Logged in as {self.user} (ID: {self.user.id})') #type: ignore
+        log(f'Logged in as {self.user} (ID: {self.user.id})') #type: ignore
         await self.tree.sync()
-        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Ready!')
+        log(f'Ready!')
         if self.autoStart:
             s = 'y'
         else:
@@ -47,29 +50,29 @@ class Bot(discord.Client):
             with open('data.json') as file:
                 data = json.JSONDecoder().decode(file.read())
             if self.startSearch(allowExplicit=data['allowExplicit']) == True:
-                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
+                log(f'Started!')
         else:
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Not Started!')
+            log(f'Not Started!')
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True):
         if self.bg_task is None or time.time() > self.nextUpdateTime:
             self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit), name=f'Search-{self.searchNum}')
             self.searchNum += 1
             return True
-        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Already Started!')
+        log(f'Search Already Started!')
         return False
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
             return
-        #print(f'Recieved message: {message.content}')
+        #log(f'Recieved message: {message.content}')
         if message.author.id == authorID:
             if message.content.startswith('$reload'):
-                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Reloading')
+                log(f'Reloading')
                 #self.tree.copy_global_to(guild=message.guild) #type: ignore
-                print(await self.tree.sync(guild=message.guild))
-                print([com.name for com in self.tree.get_commands()])
-                #print(message.guild.id)
+                log(await self.tree.sync(guild=message.guild)) #type: ignore
+                log([com.name for com in self.tree.get_commands()]) #type: ignore
+                #log(message.guild.id)
                 await message.channel.send('Reloaded!')
 
     async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
@@ -86,11 +89,11 @@ class Bot(discord.Client):
                         async for message in channel.history(limit=10): #type: ignore
                             if message.author == self.user:
                                 await message.delete()
-                                print(f'{time.strftime("%H:%M:%S", time.localtime())} - Message Deleted!')
+                                log(f'Message Deleted!')
             except:
                 pass
 
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Search Starting!')
+            log(f'Search Starting!')
             t1 = time.time()
             dataFile = decoder.decode(open('data.json').read())
             totalWorks = dataFile['total']
@@ -99,7 +102,7 @@ class Bot(discord.Client):
             for searchParam in searchParams:
                 search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
                 search.update()
-                print(f'Total Works: {search.total_results}, Pages: {search.pages}')
+                log(f'Total Works: {search.total_results}, Pages: {search.pages}')
 
                 while search.page <= search.pages:
                     newWorks = 0
@@ -111,7 +114,7 @@ class Bot(discord.Client):
                             dataFile['ids'].append(result.id)
                             newWorks += 1
                             totalWorks += 1
-                    print(f'Works Loaded: {totalWorks}, Page: {search.page}')
+                    log(f'Works Loaded: {totalWorks}, Page: {search.page}')
                     if send and newWorks == 0:
                         break
                     search.page += 1
@@ -122,23 +125,23 @@ class Bot(discord.Client):
                     jsonData = encoder.encode(dataFile)
                     file.write(jsonData)
 
-            print(f'''{time.strftime("%H:%M:%S", time.localtime())} - Updated Data File in {round(time.time() - t1, 1)} Seconds
-                Increased works from {startingWorks} to {totalWorks}''')
+            log(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
+                           Increased works from {startingWorks} to {totalWorks}''')
             if not send:
                 break
             self.nextUpdateTime = time.time() + self.updateTime * 60 * 60
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Next search time: {time.strftime('%H:%M:%S', time.localtime(self.nextUpdateTime))}')
+            log(f'Next search time: {time.strftime('%H:%M:%S', time.localtime(self.nextUpdateTime))}')
             await asyncio.sleep(self.updateTime * 60 * 60)
 
     async def sendWork(self, workID: int, deleteAfter: int | None):
-        print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work: {workID}')
+        log(f'Sending work: {workID}')
         if self.channelIDs == []:
             with open('data.json') as file:
                 self.channelIDs = json.JSONDecoder().decode(file.read())['channelIDs']
         if self.channelIDs == []:
-            print('Channel List is empty')
+            log('Channel List is empty')
         for channelID in self.channelIDs:
             channel = self.get_channel(channelID)
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sending work {workID} to channel "{self.get_channel(channelID).name}"') #type: ignore
+            log(f'Sending work {workID} to channel "{self.get_channel(channelID).name}"') #type: ignore
             message = await channel.send(f'https://archiveofourown.org/works/{workID}', delete_after=deleteAfter) #type: ignore
-            #print(f'{time.strftime("%H:%M:%S", time.localtime())} - Sent to {workID} channel "{self.get_channel(channelID).name}"') #type: ignore
+            #log(f'Sent to {workID} channel "{self.get_channel(channelID).name}"') #type: ignore
