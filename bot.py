@@ -4,6 +4,7 @@ import time
 import discord
 import asyncio
 import inputimeout
+from ServerInfo import ServerInfo
 from keys import authorID
 
 class Bot(discord.Client):
@@ -13,10 +14,15 @@ class Bot(discord.Client):
         self.tree = discord.app_commands.CommandTree(self)
         self.searchNum = 0
         self.logLevel = 0
+        with open('data.json', 'r') as f:
+            self.serverInfos = [ServerInfo.fromJSON(si, guildID) for guildID, si in json.JSONDecoder().decode(f.read()).items()]
 
-    def log(self ,message: str) -> None:
+    def log(self ,message: str, guildID: int | None = None) -> None:
         if self.logLevel > 0:
-            print(f'{time.strftime("%H:%M:%S", time.localtime())} - {message}')
+            if guildID:
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - {guildID} - {message}')
+            else:
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} - {message}')
 
     def setInfo(self, searchParams: list[dict[str, str | bool | int]], updateTime: float, channelIDs: list[int], autoStart: bool | None = None, delete: bool | None = None) -> None:
         '''
@@ -27,15 +33,15 @@ class Bot(discord.Client):
             autoStart (bool | None = None): Whether to automatically restart the bot after a disconnect. If set to None will not change the value.
             delete (bool | None = None): Whether to delete previously sent links. If set to None will not change the value. 
         '''
-        self.searchParams = searchParams
-        self.updateTime = updateTime
-        self.channelIDs = channelIDs
-        self.bg_task: asyncio.Task | None = None
-        if delete is not None:
-            self.delete = delete
+        #self.searchParams = searchParams
+        #self.updateTime = updateTime
+        #self.channelIDs = channelIDs
+        #self.bg_task: list[asyncio.Task | None] = [None] * len(self.guilds)
+        #if delete is not None:
+            #self.delete = delete
         if autoStart is not None:
             self.autoStart = autoStart
-        self.nextUpdateTime = 0
+        #self.nextUpdateTime = 0
 
     async def on_ready(self):
         self.log(f'Logged in as {self.user} (ID: {self.user.id})') #type: ignore
@@ -49,20 +55,17 @@ class Bot(discord.Client):
             except inputimeout.TimeoutOccurred:
                 s = 'n'
         if s.lower().strip() == 'y':
-            with open('data.json') as file:
-                data = json.JSONDecoder().decode(file.read())
-            if self.startSearch(allowExplicit=data['allowExplicit']) == True:
-                self.log(f'Started!')
+            self.startSearches()
+            #self.log(f'Started!')
         else:
             self.log(f'Not Started!')
 
-    def startSearch(self, send: bool = True, allowExplicit: bool = True):
-        if self.bg_task is None or time.time() > self.nextUpdateTime:
-            self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit), name=f'Search-{self.searchNum}')
-            self.searchNum += 1
-            return True
-        self.log(f'Search Already Started!')
-        return False
+    def startSearches(self, send: bool = True):
+        for serverInfo in self.serverInfos:
+            if serverInfo.task is None or time.time() > serverInfo.nextUpdateTime:
+                serverInfo.task = self.loop.create_task(self.search(serverInfo, send), name=f'Search-{serverInfo.guildID}-{serverInfo.searchNum}')
+                serverInfo.searchNum += 1
+            #self.log(f'Search Already Started!')
 
     async def on_message(self, message: discord.Message):
         if message.author == self.user:
@@ -77,7 +80,7 @@ class Bot(discord.Client):
                 #self.log(message.guild.id)
                 await message.channel.send('Reloaded!')
 
-    async def search(self, searchParams: list[dict[str, str | bool | int]], send: bool = True, allowExplicit: bool = True, deleteAfter: int | None = None):
+    async def search(self, serverInfo: ServerInfo, send: bool):
         await self.wait_until_ready()
         
         decoder = json.decoder.JSONDecoder()
@@ -85,38 +88,38 @@ class Bot(discord.Client):
         
         while not self.is_closed():
             try:
-                if self.delete:
-                    for channelID in self.channelIDs:
+                if serverInfo.delete:
+                    for channelID in serverInfo.channelIDs:
                         channel = self.get_channel(channelID)
                         async for message in channel.history(limit=10): #type: ignore
                             if message.author == self.user:
                                 await message.delete()
-                                self.log(f'Message Deleted!')
+                                self.log(f'Message Deleted!', serverInfo.guildID)
             except:
                 pass
 
-            self.log(f'Search Starting!')
+            self.log(f'Search Starting!', serverInfo.guildID)
             t1 = time.time()
             dataFile = decoder.decode(open('data.json').read())
-            totalWorks = dataFile['total']
-            startingWorks = dataFile['total']
+            totalWorks = dataFile[serverInfo.guildID]['total']
+            startingWorks = dataFile[serverInfo.guildID]['total']
 
-            for searchParam in searchParams:
+            for searchParam in serverInfo.searchParams:
                 search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
                 search.update()
-                self.log(f'Total Works: {search.total_results}, Pages: {search.pages}')
+                self.log(f'Total Works: {search.total_results}, Pages: {search.pages}', serverInfo.guildID)
 
                 while search.page <= search.pages:
                     newWorks = 0
                     for result in search.results:
-                        if result.id not in dataFile['ids'] and (allowExplicit or (result.rating != 'Explicit')):
+                        if result.id not in dataFile['ids'] and (serverInfo.explicit or (result.rating != 'Explicit')):
                             if send:
-                                await self.sendWork(result.id, deleteAfter)
+                                await self.sendWork(serverInfo, result.id)
                                 await asyncio.sleep(4)
                             dataFile['ids'].append(result.id)
                             newWorks += 1
                             totalWorks += 1
-                    self.log(f'Works Loaded: {totalWorks}, Page: {search.page}')
+                    self.log(f'Works Loaded: {totalWorks}, Page: {search.page}', serverInfo.guildID)
                     if send and newWorks == 0:
                         break
                     search.page += 1
@@ -128,22 +131,22 @@ class Bot(discord.Client):
                     file.write(jsonData)
 
             self.log(f'''Updated Data File in {round(time.time() - t1, 1)} Seconds
-                           Increased works from {startingWorks} to {totalWorks}''')
+                           Increased works from {startingWorks} to {totalWorks}''', serverInfo.guildID)
             if not send:
                 break
-            self.nextUpdateTime = time.time() + self.updateTime * 60 * 60
-            self.log(f'Next search time: {time.strftime('%H:%M:%S', time.localtime(self.nextUpdateTime))}')
-            await asyncio.sleep(self.updateTime * 60 * 60)
+            serverInfo.nextUpdateTime = time.time() + serverInfo.updateTime * 60 * 60
+            self.log(f'Next search time: {time.strftime('%H:%M:%S', time.localtime(serverInfo.nextUpdateTime))}', serverInfo.guildID)
+            await asyncio.sleep(serverInfo.updateTime * 60 * 60)
 
-    async def sendWork(self, workID: int, deleteAfter: int | None):
-        self.log(f'Sending work: {workID}')
-        if self.channelIDs == []:
+    async def sendWork(self, serverInfo: ServerInfo, workID: int):
+        self.log(f'Sending work: {workID}', serverInfo.guildID)
+        if serverInfo.channelIDs == []:
             with open('data.json') as file:
-                self.channelIDs = json.JSONDecoder().decode(file.read())['channelIDs']
-        if self.channelIDs == []:
-            self.log('Channel List is empty')
-        for channelID in self.channelIDs:
+                serverInfo.channelIDs = json.JSONDecoder().decode(file.read())[serverInfo.guildID]['channelIDs']
+        if serverInfo.channelIDs == []:
+            self.log('Channel List is empty', serverInfo.guildID)
+        for channelID in serverInfo.channelIDs:
             channel = self.get_channel(channelID)
-            self.log(f'Sending work {workID} to channel "{self.get_channel(channelID).name}"') #type: ignore
-            message = await channel.send(f'https://archiveofourown.org/works/{workID}', delete_after=deleteAfter) #type: ignore
+            self.log(f'Sending work {workID} to channel "{self.get_channel(channelID).name}"', serverInfo.guildID) #type: ignore
+            message = await channel.send(f'https://archiveofourown.org/works/{workID}') #type: ignore
             #self.log(f'Sent to {workID} channel "{self.get_channel(channelID).name}"') #type: ignore
