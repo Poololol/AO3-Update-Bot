@@ -3,6 +3,7 @@ import json
 import time
 import discord
 import asyncio
+import requests
 import inputimeout
 from keys import authorID
 
@@ -103,7 +104,11 @@ class Bot(discord.Client):
 
             for searchParam in searchParams:
                 search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
-                search.update()
+                try:
+                    search.update()
+                except requests.exceptions.ConnectionError:
+                    await asyncio.sleep(60)
+                    search.update()
                 self.log(f'Total Works: {search.total_results}, Pages: {search.pages}')
 
                 while search.page <= search.pages:
