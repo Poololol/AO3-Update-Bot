@@ -59,6 +59,8 @@ class Bot(discord.Client):
 
     def startSearch(self, send: bool = True, allowExplicit: bool = True):
         if self.bg_task is None or time.time() > self.nextUpdateTime:
+            if self.bg_task is not None:
+                self.bg_task.cancel()
             self.bg_task = self.loop.create_task(self.search(self.searchParams, send, allowExplicit), name=f'Search-{self.searchNum}')
             self.searchNum += 1
             return True
