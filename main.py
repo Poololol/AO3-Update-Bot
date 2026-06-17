@@ -32,10 +32,34 @@ def setBotInfo(bot: Bot, searchParams: list[dict[str, list[str]]], updateTime: f
     saveParams(searchParams)
     bot.setInfo([convertParams(searchParams[i]) for i in range(len(searchParams))], updateTime, channelIDs, autoStart, delete)
 
-def loadData():
+def loadData(interaction: discord.Interaction) -> dict[str, int | list[int] | str | list[dict[str, list[str]]]]:
     with open('data.json') as file:
-        data = json.JSONDecoder().decode(file.read())
-    return data
+        data = json.load(file)
+    guildID = str(interaction.guild_id)
+    try:
+        if guildID not in data.keys():
+            sendError(interaction)
+            return {'searchParams': [{"characters": [], "fandoms": []}]}
+    except Exception as e:
+        print(e)
+    return data[guildID]
+
+def saveData(data: dict, interaction: discord.Interaction):
+    with open('data.json') as file:
+        existingData = json.JSONDecoder().decode(file.read())
+    guildID = str(interaction.guild_id)
+    if guildID not in existingData.keys():
+        asyncio.run(sendError(interaction))
+        return
+    existingData[guildID] = data
+    with open('data.json', 'w') as file:
+        file.write(json.JSONEncoder().encode(existingData))
+
+def sendError(interaction: discord.Interaction):
+    print(1)
+    t = asyncio.create_task(interaction.response.send_message('Unknown server, contact <@452477367026450443> for help'))
+    
+    asyncio.run_coroutine_threadsafe(interaction.response.send_message('Unknown server, contact <@452477367026450443> for help'), asyncio.get_event_loop())
 
 def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = None, linkDelete: bool = True) -> None:
     '''
@@ -46,21 +70,18 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
         deleteAfter (int | None = None): The time in seconds to delete responses to commands after. If set to None will not delete.
         linkDelete (bool = True): Whether to delete the sent links.
     '''
-    data = loadData()
 
     intents = discord.Intents.default()
     intents.message_content = True
-    searchParams: list[dict[str, list[str]]] = data['searchParams']
-    updateTime: float = data['interval']
 
     bot = Bot(command_prefix='$', intents=intents)
-    setBotInfo(bot, searchParams, updateTime, data['channelIDs'], autoStart, linkDelete)
+    #setBotInfo(bot, searchParams, updateTime, data['channelIDs'], autoStart, linkDelete)
 
     tree = bot.tree
     @tree.command(name="addchannel", description="Adds a channel to the update list")
     @discord.app_commands.describe(channel='The channel to add (defaults to current channel)')
     async def addChannel(interaction: discord.Interaction, channel: discord.channel.TextChannel | None = None): 
-        data = loadData()
+        data = loadData(interaction)
         if channel is None:
             channel = interaction.channel #type: ignore
         channelID = channel.id #type: ignore
@@ -69,13 +90,12 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
             await interaction.response.send_message(f'Added channel "{channel.name}" to update list', delete_after=deleteAfter) #type: ignore
         else:
             await interaction.response.send_message(f'Channel "{channel.name}" is already in update list', delete_after=deleteAfter) #type: ignore
-        with open('data.json', 'w') as file:
-            file.write(json.JSONEncoder().encode(data))
+        saveData(data, interaction)
 
     @tree.command(name="removechannel", description="Removes a channel from the update list")
     @discord.app_commands.describe(channel='The channel to remove (defaults to current channel)')
     async def removeChannel(interaction: discord.Interaction, channel: discord.channel.TextChannel | None = None):
-        data = loadData()
+        data = loadData(interaction)
         if channel is None:
             channel = interaction.channel #type: ignore
         channelID = channel.id #type: ignore
@@ -84,65 +104,69 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
             await interaction.response.send_message(f'Removed channel "{channel.name}" from update list', delete_after=deleteAfter) #type: ignore
         except ValueError:
             await interaction.response.send_message(f'Failed to remove channel "{channel.name}" from update list', delete_after=deleteAfter) #type: ignore
-        with open('data.json', 'w') as file:
-            file.write(json.JSONEncoder().encode(data))
+        saveData(data, interaction)
 
     @tree.command(name="addtag", description="Adds a tag to the search")
     @discord.app_commands.describe(tagtype="The type of tag to add e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to add")
     async def addTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships', 'excluded_tags'], tag: str, searchgroup: int = 1):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         try: 
             if tag not in searchParams[searchgroup - 1][tagtype]:
                 searchParams[searchgroup - 1][tagtype].append(tag)
                 await interaction.response.send_message(f'Added "{tag}" to search parameters for group {searchgroup}', delete_after=deleteAfter)
-                setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
+                #setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
             else:
                 await interaction.response.send_message(f'"{tag}" is already in search parameters', delete_after=deleteAfter)
         except IndexError:
             await interaction.response.send_message(f'Search Group {searchgroup} does not exist', delete_after=deleteAfter)
+        saveData(data, interaction)
 
     @tree.command(name="removetag", description="Removes a tag from the search")
     @discord.app_commands.describe(tagtype="The type of tag to remove e.g. Character, Fandom", searchgroup='The search group to add the tag to', tag="The tag to remove")
     async def removeTag(interaction: discord.Interaction, tagtype: Literal['characters', 'fandoms', 'tags', 'relationships', 'excluded_tags'], tag: str, searchgroup: int = 1):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)        
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         try:
             searchParams[searchgroup - 1][tagtype].remove(tag)
             await interaction.response.send_message(f'Removed "{tag}" from search parameters for group {searchgroup}', delete_after=deleteAfter)
-            setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
+            #setBotInfo(bot, searchParams, updateTime, data['channelIDs'])
         except (ValueError, IndexError) as e:
             if e.__class__ == IndexError:
                 await interaction.response.send_message(f'Search Group {searchgroup} does not exist', delete_after=deleteAfter)
             elif e.__class__ == ValueError: 
                 await interaction.response.send_message(f'"{tag}" was not in search parameters', delete_after=deleteAfter)
+        saveData(data, interaction)
 
     @tree.command(name='addgroup', description='Adds a search group')
     async def addGroup(interaction: discord.Interaction):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         with open('dataTemplate.json') as file:
             searchParams.append(json.JSONDecoder().decode(file.read())['searchParams'][0])
-        saveParams(searchParams)
+        saveData(data, interaction)
         await interaction.response.send_message(f'Search Group added! Total Groups: {len(searchParams)}', delete_after=deleteAfter)
     
     @tree.command(name='deletegroup', description='Removes a search group from the search')
     @discord.app_commands.describe(searchgroup='The search group to remove')
     async def deleteGroup(interaction: discord.Interaction, searchgroup: int):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         try:
             searchParams.pop(searchgroup - 1)
-            saveParams(searchParams)
-            await interaction.response.send_message(f'Search Group removec! Total Groups: {len(searchParams)}', delete_after=deleteAfter)
+            await interaction.response.send_message(f'Search Group removed! Total Groups: {len(searchParams)}', delete_after=deleteAfter)
         except IndexError:
             await interaction.response.send_message(f'Failed to remove Search Group! Search Group {searchgroup} does not exist', delete_after=deleteAfter)
-    
+        saveData(data, interaction)
+
     @tree.command(name="listtags", description="Lists the current tags in the search")
     async def listTags(interaction: discord.Interaction):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         if searchEmpty(searchParams):
+            await asyncio.sleep(0.00001)
+            res = await interaction.original_response()
+            print(res)
             await interaction.response.send_message('No tags currently selected', delete_after=deleteAfter)
         else:
             message = ''
@@ -162,8 +186,9 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
 
     @tree.command(name="listchannels", description="Lists the current channels that are being updated")
     async def listChannels(interaction: discord.Interaction):
+        data = loadData(interaction)
         channelNames: list[str] = []
-        for channelID in data['channelIDs']:
+        for channelID in data['channelIDs']: # type: ignore
             channelNames.append(bot.get_channel(channelID).name) #type: ignore
         message = '**Channels:**\n'
         for name in channelNames:
@@ -173,7 +198,7 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
     @tree.command(name='setinterval', description='Sets the interval between searches')
     @discord.app_commands.describe(interval='The time in hours')
     async def setInterval(interaction: discord.Interaction, interval: float):
-        data = loadData()
+        data = loadData(interaction)
         searchParams = data['searchParams']
         data['interval'] = interval
         with open('data.json', 'w') as file:
@@ -184,15 +209,15 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
 
     @tree.command(name='start', description='Start the bot searching')
     async def start(interaction: discord.Interaction):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         if searchEmpty(searchParams):
             await interaction.response.send_message('No tags currently selected, search cannot be started', delete_after=deleteAfter)
         else:
-            if bot.bg_task:
+            if bot.serverInfos[[si.guildID for si in bot.serverInfos].index(str(interaction.guild_id))]:
                 await interaction.response.send_message('Bot is already running!', delete_after=deleteAfter)
             else:
-                bot.startSearch(allowExplicit=data['allowExplicit'])
+                bot.startSearches(True)
                 await interaction.response.send_message('Started!', delete_after=deleteAfter)
                 print(f'{time.strftime("%H:%M:%S", time.localtime())} - Started!')
 
@@ -208,7 +233,7 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
 
     @tree.command(name='load', description='Load works without sending links. Useful for the first time using the bot')
     async def load(interaction: discord.Interaction):
-        data = loadData()
+        data = loadData(interaction)
         searchParams = data['searchParams']
         if searchEmpty(searchParams):
             await interaction.response.send_message('No tags currently selected, search cannot be started', delete_after=deleteAfter)
@@ -231,8 +256,8 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
     @tree.command(name='listnumworks', description='Lists the total number of loaded works')
     @discord.app_commands.describe(group='The search group to list for. -1 = All groups, 0 = Total Loaded, 1 = Search Group 1 ...')
     async def listNumWorks(interaction: discord.Interaction, group: int = -1):
-        data = loadData()
-        searchParams = data['searchParams']
+        data = loadData(interaction)
+        searchParams: list[dict[str, list[str]]] = data['searchParams'] # type: ignore
         intdata = await interaction.response.send_message('Loading...')
         message: discord.Message = await interaction.channel.fetch_message(intdata.message_id) #type: ignore
         if group == -1:
@@ -256,10 +281,9 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
 
     @tree.command(name='toggleexplicit', description='Toggles the visibility of fics marked explicit')
     async def toggleExplicit(interaction: discord.Interaction):
-        data = loadData()
+        data = loadData(interaction)
         data['allowExplicit'] = not data['allowExplicit']
-        with open('data.json', 'w') as file:
-            file.write(json.JSONEncoder().encode(data))
+        saveData(data, interaction)
         await interaction.response.send_message(f'Toggled visibility to {'True' if data['allowExplicit'] else 'False'}', delete_after=deleteAfter)
     
     @tree.command(name='random', description='Gets a random work from the list of loaded works')

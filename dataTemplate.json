@@ -1,16 +1,18 @@
 {
-    "channelIDs": [],
-    "total": 0,
-    "ids": [],
-    "searchParams": [
-        {
-            "characters": [],
-            "fandoms": [],
-            "tags": [],
-            "relationships": [],
-            "excluded_tags": []
-        }
-    ],
-    "allowExplicit": true,
-    "interval": 1
+    "12345678": {
+        "channelIDs": [],
+        "total": 0,
+        "ids": [],
+        "searchParams": [
+            {
+                "characters": [],
+                "fandoms": [],
+                "tags": [],
+                "relationships": [],
+                "excluded_tags": []
+            }
+        ],
+        "allowExplicit": true,
+        "interval": 1
+    }
 }
