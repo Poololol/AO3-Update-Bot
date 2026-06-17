@@ -3,6 +3,7 @@ import json
 import time
 import discord
 import asyncio
+import requests
 import inputimeout
 from ServerInfo import ServerInfo
 from keys import authorID

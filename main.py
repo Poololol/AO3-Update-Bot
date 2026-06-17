@@ -7,6 +7,7 @@ from AO3 import Search
 from typing import Literal
 from bot import Bot
 from keys import token
+from random import choice
 
 def convertParams(searchParams: dict[str, list[str]]) -> dict[str, str | int | bool]:
     new = {}
@@ -284,6 +285,14 @@ def main(logLevel: int = 1, autoStart: bool = True, deleteAfter: int | None = No
         data['allowExplicit'] = not data['allowExplicit']
         saveData(data, interaction)
         await interaction.response.send_message(f'Toggled visibility to {'True' if data['allowExplicit'] else 'False'}', delete_after=deleteAfter)
+    
+    @tree.command(name='random', description='Gets a random work from the list of loaded works')
+    async def random(interaction: discord.Interaction):
+        data = loadData()
+        if len(data['ids']) == 0:
+            await interaction.response.send_message(f'No loaded fics, unable to choose one.', delete_after=deleteAfter)
+        chosen = choice(data['ids'])
+        await interaction.response.send_message(f'https://archiveofourown.org/works/{chosen}', delete_after=deleteAfter)
     
     bot.logLevel = logLevel
     if logLevel == 2:
