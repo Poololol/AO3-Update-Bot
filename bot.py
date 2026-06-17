@@ -14,13 +14,15 @@ class Bot(discord.Client):
         self.tree = discord.app_commands.CommandTree(self)
         self.searchNum = 0
         self.logLevel = 0
+        self.autoStart = False
         with open('data.json', 'r') as f:
-            self.serverInfos = [ServerInfo.fromJSON(si, guildID) for guildID, si in json.JSONDecoder().decode(f.read()).items()]
+            #print([(serverInfo, guildID) for guildID, serverInfo in json.load(f).items()])
+            self.serverInfos = [ServerInfo.fromJSON(serverInfo, guildID) for guildID, serverInfo in json.load(f).items()]
 
-    def log(self ,message: str, guildID: int | None = None) -> None:
+    def log(self, message: str, guildID: str | None = None) -> None:
         if self.logLevel > 0:
             if guildID:
-                print(f'{time.strftime("%H:%M:%S", time.localtime())} - {guildID} - {message}')
+                print(f'{time.strftime("%H:%M:%S", time.localtime())} [{guildID}] - {message}')
             else:
                 print(f'{time.strftime("%H:%M:%S", time.localtime())} - {message}')
 
@@ -68,6 +70,7 @@ class Bot(discord.Client):
             #self.log(f'Search Already Started!')
 
     async def on_message(self, message: discord.Message):
+        #print(message.content, '-', message.channel)
         if message.author == self.user:
             return
         #self.log(f'Recieved message: {message.content}')
@@ -101,8 +104,9 @@ class Bot(discord.Client):
             self.log(f'Search Starting!', serverInfo.guildID)
             t1 = time.time()
             dataFile = decoder.decode(open('data.json').read())
-            totalWorks = dataFile[serverInfo.guildID]['total']
-            startingWorks = dataFile[serverInfo.guildID]['total']
+            serverFile = dataFile[serverInfo.guildID]
+            totalWorks = serverFile['total']
+            startingWorks = serverFile['total']
 
             for searchParam in serverInfo.searchParams:
                 search = AO3.Search(**searchParam, sort_column=AO3.search.DATE_POSTED) #type: ignore
@@ -112,11 +116,11 @@ class Bot(discord.Client):
                 while search.page <= search.pages:
                     newWorks = 0
                     for result in search.results:
-                        if result.id not in dataFile['ids'] and (serverInfo.explicit or (result.rating != 'Explicit')):
+                        if result.id not in serverFile['ids'] and (serverInfo.explicit or (result.rating != 'Explicit')):
                             if send:
                                 await self.sendWork(serverInfo, result.id)
                                 await asyncio.sleep(4)
-                            dataFile['ids'].append(result.id)
+                            serverFile['ids'].append(result.id)
                             newWorks += 1
                             totalWorks += 1
                     self.log(f'Works Loaded: {totalWorks}, Page: {search.page}', serverInfo.guildID)
@@ -125,8 +129,9 @@ class Bot(discord.Client):
                     search.page += 1
                     search.update()
 
-                dataFile['total'] = totalWorks
+                serverFile['total'] = totalWorks
                 with open('data.json', 'w') as file:
+                    dataFile[serverInfo.guildID] = serverFile
                     jsonData = encoder.encode(dataFile)
                     file.write(jsonData)
 
